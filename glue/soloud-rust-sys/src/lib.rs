@@ -1,4 +1,5 @@
-use libc::{c_int, c_uint};
+use libc::{c_int, c_uint, c_char, c_float};
+use std::ffi::CString;
 // #include <stdlib.h>
 // #include <stdio.h>
 // #include <math.h>
@@ -8,55 +9,63 @@ use libc::{c_int, c_uint};
 pub fn run_demo() {
     unsafe {
         let soloud = Soloud_create();
-        assert!(!soloud.is_null()); // TODO(mr): Return option instead?
+        assert!(!soloud.is_null()); // TODO(mr): Return option instead? same for others that return pointers
 
-        assert!(Soloud_initEx(soloud, SOLOUD_CLIP_ROUNDOFF | SOLOUD_ENABLE_VISUALIZATION, SOLOUD_AUTO, SOLOUD_AUTO, SOLOUD_AUTO, SOLOUD_AUTO) == 0);
+        assert_eq!(Soloud_initEx(soloud, SOLOUD_CLIP_ROUNDOFF | SOLOUD_ENABLE_VISUALIZATION, SOLOUD_AUTO, SOLOUD_AUTO, SOLOUD_AUTO, SOLOUD_AUTO), 0);
 
+        speech_test(soloud);
+        // queue_test(soloud); // TODO(mr): implement...
 
-        // speech_test(soloud);
-        // queue_test(soloud);
-
-        // Soloud_deinit(soloud);
+        Soloud_deinit(soloud);
             
-        // Soloud_destroy(soloud);
+        Soloud_destroy(soloud);
 
         println!("Cleanup done.");
     }
 }
 
-// void visualize_volume(Soloud *soloud)
-// {
-//     static int spin = 0;
-//     int i, p;
-//     float v = Soloud_getApproximateVolume(soloud, 0);
-//     printf("\r%c ", (int)("|\\-/"[spin & 3]));
-//     spin++;
-//     p = (int)(v * 60);
-//     if (p > 59) p = 59;
-//     for (i = 0; i < p; i++)
-//         printf("=");
-//     for (i = p; i < 60; i++)
-//         printf(" ");
-// }
+// TODO(mr): Clean up the spin thing
+fn visualize_volume(soloud: *mut Soloud, spin: &mut i32) {
+    unsafe {
+        let v = Soloud_getApproximateVolume(soloud, 0);
+        print!("\r{} ", ['|', '\\', '-', '/'][(*spin & 3) as usize]);
+        *spin += 1;
+        let mut p = (v * 60.0) as i32;
+        if p > 59 {
+            p = 59;
+        }
+        // TODO(mr): Isn't there a format specifier for this?
+        for i in 0..p {
+            print!("=");
+        }
+        for i in p..60 {
+            print!(" ");
+        }
+    }
+}
 
-// void speech_test(Soloud *soloud)
-// {
-//     Speech *speech = Speech_create();
+fn speech_test(soloud: *mut Soloud) {
+    unsafe {
+        let speech = Speech_create();
+        assert!(!speech.is_null());
 
-//     Speech_setText(speech, "1 2 3       A B C        Doooooo    Reeeeee    Miiiiii    Faaaaaa    Soooooo    Laaaaaa    Tiiiiii    Doooooo!");
+        let string = CString::new("1 2 3       A B C        Doooooo    Reeeeee    Miiiiii    Faaaaaa    Soooooo    Laaaaaa    Tiiiiii    Doooooo!").unwrap();
+        assert_eq!(Speech_setText(speech, string.as_ptr()), 0);
 
-//     Soloud_setGlobalVolume(soloud, 4);
-//     Soloud_play(soloud, speech);
+        Soloud_setGlobalVolume(soloud, 4.0);
+        Soloud_play(soloud, speech as *mut AudioSource);
 
-//     printf("Playing speech test..\n");
+        println!("Playing speech test..");
 
-//     while (Soloud_getVoiceCount(soloud) > 0)
-//     {
-//         visualize_volume(soloud);
-//     }
-//     printf("\nFinished.\n");
-//     Speech_destroy(speech);
-// }
+        let mut spin = 0;
+        while Soloud_getVoiceCount(soloud) > 0 {
+            visualize_volume(soloud, &mut spin);
+        }
+        println!();
+        println!("Finished.");
+        Speech_destroy(speech);
+    }
+}
 
 // void generate_sample(float *buf, int *count)
 // {
@@ -186,12 +195,25 @@ pub const VIC_SOPRANO: c_uint = 2;
 pub const VIC_NOISE: c_uint = 3;
 pub const VIC_MAX_REGS: c_uint = 4;
 
-#[repr(C)] 
-struct Soloud { do_not_instantiate: [u8; 0] }
+// TODO(mr): Note to self to file an issue on my own repos to stop using empty enums for this since
+// it's no longer recommended
+macro_rules! opaque_struct {
+    ($name:ident) => {
+        #[repr(C)]
+        struct $name {
+            do_not_instantiate: [u8; 0],
+        }
+    }
+}
+
+opaque_struct!(Soloud);
+opaque_struct!(Speech);
+opaque_struct!(AudioSource);
 
 // TODO(mr): Specify which library we're linking to here
 // TODO(mr): I normally do this stuff manually but it might be worth mentioning Bindgen to Jari.
 extern "C" {
+    #[must_use]
     fn Soloud_create() -> *mut Soloud;
     // TODO(mr): must use because I assume the result is an error code
     #[must_use]
@@ -203,6 +225,20 @@ extern "C" {
         aBufferSize: c_uint /* = Soloud::AUTO */,
         aChannels: c_uint /* = 2 */
     ) -> c_int;
+    #[must_use]
+    fn Speech_create() -> *mut Speech;
+    #[must_use]
+    fn Speech_setText(speech: *mut Speech, text: *const c_char) -> c_int;
+    fn Soloud_setGlobalVolume(soloud: *mut Soloud, volume: c_float);
+    #[must_use]
+    fn Soloud_play(soloud: *mut Soloud, sound: *mut AudioSource) -> c_uint; // XXX: Maybe make a typedef or such to make clear it's a handle
+    #[must_use]
+    fn Soloud_getVoiceCount(soloud: *mut Soloud) -> c_uint;
+    fn Speech_destroy(speech: *mut Speech);
+    fn Soloud_deinit(soloud: *mut Soloud);
+    fn Soloud_destroy(soloud: *mut Soloud);
+    #[must_use]
+    fn Soloud_getApproximateVolume(soloud: *mut Soloud, channel: c_uint) -> c_float;
 }
 
 // TODO(mr): Add some sort of basic tests or just rely on whatever has already been set up?

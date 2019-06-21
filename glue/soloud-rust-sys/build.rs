@@ -14,6 +14,9 @@ fn main() {
     for entry in glob("../../src/core/*.cpp").unwrap() {
         soloud.file(entry.unwrap());
     }
+    for entry in glob("../../src/audiosource/speech/*.cpp").unwrap() {
+        soloud.file(entry.unwrap());
+    }
 
     // TODO(mr): Make feature flags for which backendsto enable. We might also need to specify which
     // backend code to compile here.
@@ -29,6 +32,8 @@ fn main() {
     soloud.flag_if_supported("-Wno-delete-non-virtual-dtor");
     soloud.flag_if_supported("-Wno-missing-field-initializers");
     soloud.flag_if_supported("-Wno-unused-function");
+    soloud.flag_if_supported("-Wno-missing-braces");
+    soloud.flag_if_supported("-Wno-unused-value");
 
     soloud.compile("soloud");
 }
