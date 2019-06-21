@@ -14,7 +14,7 @@ fn main() {
     for entry in glob("../../src/core/*.cpp").unwrap() {
         soloud.file(entry.unwrap());
     }
-    for entry in glob("../../src/audiosource/speech/*.cpp").unwrap() {
+    for entry in glob("../../src/audiosource/**/*.cpp").unwrap() {
         soloud.file(entry.unwrap());
     }
 
@@ -34,6 +34,7 @@ fn main() {
     soloud.flag_if_supported("-Wno-unused-function");
     soloud.flag_if_supported("-Wno-missing-braces");
     soloud.flag_if_supported("-Wno-unused-value");
+    soloud.flag_if_supported("-Wno-char-subscripts");
 
     soloud.compile("soloud");
 }

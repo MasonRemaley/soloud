@@ -1,9 +1,6 @@
-use libc::{c_int, c_uint, c_char, c_float};
+use libc::{c_int, c_uint, c_char, c_float, rand};
 use std::ffi::CString;
-// #include <stdlib.h>
-// #include <stdio.h>
-// #include <math.h>
-// #include "soloud_c.h"
+use std::f32::consts::PI;
 
 // TODO(mr): Move this out into demo.rs
 pub fn run_demo() {
@@ -14,7 +11,7 @@ pub fn run_demo() {
         assert_eq!(Soloud_initEx(soloud, SOLOUD_CLIP_ROUNDOFF | SOLOUD_ENABLE_VISUALIZATION, SOLOUD_AUTO, SOLOUD_AUTO, SOLOUD_AUTO, SOLOUD_AUTO), 0);
 
         speech_test(soloud);
-        // queue_test(soloud); // TODO(mr): implement...
+        queue_test(soloud);
 
         Soloud_deinit(soloud);
             
@@ -35,10 +32,10 @@ fn visualize_volume(soloud: *mut Soloud, spin: &mut i32) {
             p = 59;
         }
         // TODO(mr): Isn't there a format specifier for this?
-        for i in 0..p {
+        for _ in 0..p {
             print!("=");
         }
-        for i in p..60 {
+        for _ in p..60 {
             print!(" ");
         }
     }
@@ -67,70 +64,73 @@ fn speech_test(soloud: *mut Soloud) {
     }
 }
 
-// void generate_sample(float *buf, int *count)
-// {
-//     int i;
-//     int base = *count;
-//     for (i = 0; i < 2048; i++, base++)
-//     {
-//         buf[i] = (float)sin(220 * 3.14 * 2 * base * (1 / 44100.0)) -
-//                  (float)sin(230 * 3.14 * 2 * base * (1 / 44100.0));
-//         buf[i] += (((rand() % 1024) - 512) / 512.0f) *
-//                   (float)sin(60 * 3.14 * 2 * base * (1 / 44100.0)) *
-//                   (float)sin(1 * 3.14 * 2 * base * (1 / 44100.0));
-//         float fade = (44100 * 10 - base) / (44100 * 10.0f);
-//         buf[i] *= fade * fade;
-//     }
-//     *count = base;
-// }
+fn queue_test(soloud: *mut Soloud) {
+    unsafe {
+        let queue = Queue_create();  
+        let mut wav = Vec::new();
+        for _ in 0..4 {
+            let temp = Wav_create();
+            assert!(!temp.is_null());
+            wav.push(temp);
+        }
+        let mut buf = vec![0.0; 2048];
 
-// void queue_test(Soloud *soloud)
-// {
-//     int i;
-//     int count = 0;
-//     int cycle = 0;
-//     Queue *queue = Queue_create();  
-//     Wav *wav[4];
-//     float buf[2048];
-//     for (i = 0; i < 4; i++)
-//         wav[i] = Wav_create();
-//     for (i = 0; i < 2048; i++)
-//         buf[i] = 0;
+        Soloud_play(soloud, queue as *mut AudioSource);
 
-//     Soloud_play(soloud, queue);
+        let mut count = 0;
+        for i in 0..4 {
+            generate_sample(&mut buf, &mut count);
+            assert_eq!(Wav_loadRawWaveEx(wav[i], buf.as_mut_ptr(), 2048, 44100.0, 1, 1, 0), 0);
+            assert_eq!(Queue_play(queue, wav[i] as *mut AudioSource), 0);
+        }
 
-//     for (i = 0; i < 4; i++)
-//     {
-//         generate_sample(buf, &count);
-//         Wav_loadRawWaveEx(wav[i], buf, 2048, 44100, 1, 1, 0);
-//         Queue_play(queue, wav[i]);
-//     }
+        println!("Playing queue / wav generation test..");
 
-//     printf("Playing queue / wav generation test..\n");
+        let mut spin = 0;
+        let mut cycle = 0;
+        while count < 44100 * 10 && Soloud_getVoiceCount(soloud) > 0 {
+            if Queue_getQueueCount(queue) < 3 {
+                generate_sample(&mut buf, &mut count);
+                assert_eq!(Wav_loadRawWaveEx(wav[cycle], buf.as_mut_ptr(), 2048, 44100.0, 1, 1, 0), 0);
+                assert_eq!(Queue_play(queue, wav[cycle] as *mut AudioSource), 0);
+                cycle = (cycle + 1) % 4;
+            }
+            visualize_volume(soloud, &mut spin);
+        }
 
-//     while (count < 44100 * 10 && Soloud_getVoiceCount(soloud) > 0)
-//     {
-//         if (Queue_getQueueCount(queue) < 3)
-//         {
-//             generate_sample(buf, &count);
-//             Wav_loadRawWaveEx(wav[cycle], buf, 2048, 44100, 1, 1, 0);
-//             Queue_play(queue, wav[cycle]);
-//             cycle = (cycle + 1) % 4;
-//         }
-//         visualize_volume(soloud);
-//     }
+        while Soloud_getVoiceCount(soloud) > 0 {
+            visualize_volume(soloud, &mut spin);
+        }
 
-//     while (Soloud_getVoiceCount(soloud) > 0)
-//     {
-//         visualize_volume(soloud);
-//     }
+        println!("\nFinished.");
 
-//     printf("\nFinished.\n");
+        for w in wav {
+            Wav_destroy(w);
+        }
+        Queue_destroy(queue);
+    }
+}
 
-//     for (i = 0; i < 4; i++)
-//         Wav_destroy(wav[i]);
-//     Queue_destroy(queue);
-// }
+// TODO(mr): Build the c example, make sure it sounds the same
+// TODO(mr): Clean up loop
+// TODO(mr): Don't use libc for rand
+fn generate_sample(buf: &mut [f32], count: &mut i32) {
+    let mut i = 0;
+    let mut base = *count;
+    while i < 2048 {
+        buf[i] = (220.0 * PI * 2.0 * base as f32 * (1.0 / 44100.0)).sin() -
+                 (230.0 * PI * 2.0 * (base as f32) * (1.0 / 44100.0)).sin();
+        buf[i] += (((unsafe { rand() } % 1024) - 512) as f32 / 512.0) *
+                  (60.0 * PI * 2.0 * (base as f32) * (1.0 / 44100.0)).sin() *
+                  (1.0 * PI * 2.0 * (base as f32) * (1.0 / 44100.0)).sin();
+        let fade = (44100.0 * 10.0 - (base as f32)) / (44100.0 * 10.0);
+        buf[i] *= fade * fade;
+
+        i += 1;
+        base += 1;
+    }
+    *count = base;
+}
 
 
 // TODO(mr): Or can we get these as statics?
@@ -209,9 +209,12 @@ macro_rules! opaque_struct {
 opaque_struct!(Soloud);
 opaque_struct!(Speech);
 opaque_struct!(AudioSource);
+opaque_struct!(Queue);
+opaque_struct!(Wav);
 
 // TODO(mr): Specify which library we're linking to here
 // TODO(mr): I normally do this stuff manually but it might be worth mentioning Bindgen to Jari.
+// TODO(mr): Do we care if the pointers are mut or not?
 extern "C" {
     #[must_use]
     fn Soloud_create() -> *mut Soloud;
@@ -230,7 +233,6 @@ extern "C" {
     #[must_use]
     fn Speech_setText(speech: *mut Speech, text: *const c_char) -> c_int;
     fn Soloud_setGlobalVolume(soloud: *mut Soloud, volume: c_float);
-    #[must_use]
     fn Soloud_play(soloud: *mut Soloud, sound: *mut AudioSource) -> c_uint; // XXX: Maybe make a typedef or such to make clear it's a handle
     #[must_use]
     fn Soloud_getVoiceCount(soloud: *mut Soloud) -> c_uint;
@@ -239,6 +241,25 @@ extern "C" {
     fn Soloud_destroy(soloud: *mut Soloud);
     #[must_use]
     fn Soloud_getApproximateVolume(soloud: *mut Soloud, channel: c_uint) -> c_float;
+    #[must_use]
+    fn Queue_create() -> *mut Queue;
+    fn Queue_destroy(queue: *mut Queue);
+    #[must_use]
+    fn Wav_create() -> *mut Wav;
+    #[must_use]
+    fn Wav_loadRawWaveEx(
+        wav: *mut Wav,
+        mem: *mut c_float,
+        length: c_uint,
+        sample_rate: c_float /* = 44100.0f */,
+        channels: c_uint /* = 1 */,
+        copy: c_int /* = false */,
+        aTakeOwnership: c_int /* = true */,
+    ) -> c_int;
+    #[must_use]
+    fn Queue_play(queue: *mut Queue, sound: *mut AudioSource) -> c_int;
+    fn Queue_getQueueCount(queue: *mut Queue) -> c_uint;
+    fn Wav_destroy(wav: *mut Wav);
 }
 
 // TODO(mr): Add some sort of basic tests or just rely on whatever has already been set up?
