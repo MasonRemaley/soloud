@@ -3,19 +3,27 @@
 // #include <math.h>
 // #include "soloud_c.h"
 
+// TODO(mr): Specify which library we're linking to here
+extern "C" {
+    fn Soloud_create();
+}
+
+// TODO(mr): Move this out into demo.rs
 pub fn run_demo() {
-    // Soloud *soloud = Soloud_create();
+    unsafe {
+        let soloud = Soloud_create();
 
-    // Soloud_initEx(soloud, SOLOUD_CLIP_ROUNDOFF | SOLOUD_ENABLE_VISUALIZATION, SOLOUD_AUTO, SOLOUD_AUTO, SOLOUD_AUTO, SOLOUD_AUTO);
+        // Soloud_initEx(soloud, SOLOUD_CLIP_ROUNDOFF | SOLOUD_ENABLE_VISUALIZATION, SOLOUD_AUTO, SOLOUD_AUTO, SOLOUD_AUTO, SOLOUD_AUTO);
 
-    // speech_test(soloud);
-    // queue_test(soloud);
+        // speech_test(soloud);
+        // queue_test(soloud);
 
-    // Soloud_deinit(soloud);
-        
-    // Soloud_destroy(soloud);
+        // Soloud_deinit(soloud);
+            
+        // Soloud_destroy(soloud);
 
-    println!("Cleanup done.");
+        println!("Cleanup done.");
+    }
 }
 
 // void visualize_volume(Soloud *soloud)
