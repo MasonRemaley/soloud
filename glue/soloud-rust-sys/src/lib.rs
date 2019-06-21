@@ -1,19 +1,17 @@
+use libc::{c_int, c_uint};
 // #include <stdlib.h>
 // #include <stdio.h>
 // #include <math.h>
 // #include "soloud_c.h"
 
-// TODO(mr): Specify which library we're linking to here
-extern "C" {
-    fn Soloud_create();
-}
-
 // TODO(mr): Move this out into demo.rs
 pub fn run_demo() {
     unsafe {
         let soloud = Soloud_create();
+        assert!(!soloud.is_null()); // TODO(mr): Return option instead?
 
-        // Soloud_initEx(soloud, SOLOUD_CLIP_ROUNDOFF | SOLOUD_ENABLE_VISUALIZATION, SOLOUD_AUTO, SOLOUD_AUTO, SOLOUD_AUTO, SOLOUD_AUTO);
+        assert!(Soloud_initEx(soloud, SOLOUD_CLIP_ROUNDOFF | SOLOUD_ENABLE_VISUALIZATION, SOLOUD_AUTO, SOLOUD_AUTO, SOLOUD_AUTO, SOLOUD_AUTO) == 0);
+
 
         // speech_test(soloud);
         // queue_test(soloud);
@@ -124,6 +122,88 @@ pub fn run_demo() {
 //         Wav_destroy(wav[i]);
 //     Queue_destroy(queue);
 // }
+
+
+// TODO(mr): Or can we get these as statics?
+pub const SOLOUD_AUTO: c_uint = 0;
+pub const SOLOUD_SDL1: c_uint = 1;
+pub const SOLOUD_SDL2: c_uint = 2;
+pub const SOLOUD_PORTAUDIO: c_uint = 3;
+pub const SOLOUD_WINMM: c_uint = 4;
+pub const SOLOUD_XAUDIO2: c_uint = 5;
+pub const SOLOUD_WASAPI: c_uint = 6;
+pub const SOLOUD_ALSA: c_uint = 7;
+pub const SOLOUD_OSS: c_uint = 8;
+pub const SOLOUD_OPENAL: c_uint = 9;
+pub const SOLOUD_COREAUDIO: c_uint = 10;
+pub const SOLOUD_OPENSLES: c_uint = 11;
+pub const SOLOUD_VITA_HOMEBREW: c_uint = 12;
+pub const SOLOUD_NULLDRIVER: c_uint = 13;
+pub const SOLOUD_BACKEND_MAX: c_uint = 14;
+pub const SOLOUD_CLIP_ROUNDOFF: c_uint = 1;
+pub const SOLOUD_ENABLE_VISUALIZATION: c_uint = 2;
+pub const SOLOUD_LEFT_HANDED_3D: c_uint = 4;
+pub const BASSBOOSTFILTER_WET: c_uint = 0;
+pub const BASSBOOSTFILTER_BOOST: c_uint = 1;
+pub const BIQUADRESONANTFILTER_NONE: c_uint = 0;
+pub const BIQUADRESONANTFILTER_LOWPASS: c_uint = 1;
+pub const BIQUADRESONANTFILTER_HIGHPASS: c_uint = 2;
+pub const BIQUADRESONANTFILTER_BANDPASS: c_uint = 3;
+pub const BIQUADRESONANTFILTER_WET: c_uint = 0;
+pub const BIQUADRESONANTFILTER_SAMPLERATE: c_uint = 1;
+pub const BIQUADRESONANTFILTER_FREQUENCY: c_uint = 2;
+pub const BIQUADRESONANTFILTER_RESONANCE: c_uint = 3;
+pub const FLANGERFILTER_WET: c_uint = 0;
+pub const FLANGERFILTER_DELAY: c_uint = 1;
+pub const FLANGERFILTER_FREQ: c_uint = 2;
+pub const LOFIFILTER_WET: c_uint = 0;
+pub const LOFIFILTER_SAMPLERATE: c_uint = 1;
+pub const LOFIFILTER_BITDEPTH: c_uint = 2;
+pub const MONOTONE_SQUARE: c_uint = 0;
+pub const MONOTONE_SAW: c_uint = 1;
+pub const MONOTONE_SIN: c_uint = 2;
+pub const MONOTONE_SAWSIN: c_uint = 3;
+pub const ROBOTIZEFILTER_WET: c_uint = 0;
+pub const SFXR_COIN: c_uint = 0;
+pub const SFXR_LASER: c_uint = 1;
+pub const SFXR_EXPLOSION: c_uint = 2;
+pub const SFXR_POWERUP: c_uint = 3;
+pub const SFXR_HURT: c_uint = 4;
+pub const SFXR_JUMP: c_uint = 5;
+pub const SFXR_BLIP: c_uint = 6;
+pub const SPEECH_KW_SAW: c_uint = 0;
+pub const SPEECH_KW_TRIANGLE: c_uint = 1;
+pub const SPEECH_KW_SIN: c_uint = 2;
+pub const SPEECH_KW_SQUARE: c_uint = 3;
+pub const SPEECH_KW_PULSE: c_uint = 4;
+pub const SPEECH_KW_NOISE: c_uint = 5;
+pub const SPEECH_KW_WARBLE: c_uint = 6;
+pub const VIC_PAL: c_uint = 0;
+pub const VIC_NTSC: c_uint = 1;
+pub const VIC_BASS: c_uint = 0;
+pub const VIC_ALTO: c_uint = 1;
+pub const VIC_SOPRANO: c_uint = 2;
+pub const VIC_NOISE: c_uint = 3;
+pub const VIC_MAX_REGS: c_uint = 4;
+
+#[repr(C)] 
+struct Soloud { do_not_instantiate: [u8; 0] }
+
+// TODO(mr): Specify which library we're linking to here
+// TODO(mr): I normally do this stuff manually but it might be worth mentioning Bindgen to Jari.
+extern "C" {
+    fn Soloud_create() -> *mut Soloud;
+    // TODO(mr): must use because I assume the result is an error code
+    #[must_use]
+    fn Soloud_initEx(
+        soloud: *mut Soloud,
+        aFlags: c_uint /* = Soloud::CLIP_ROUNDOFF */,
+        aBackend: c_uint /* = Soloud::AUTO */,
+        aSamplerate: c_uint /* = Soloud::AUTO */,
+        aBufferSize: c_uint /* = Soloud::AUTO */,
+        aChannels: c_uint /* = 2 */
+    ) -> c_int;
+}
 
 // TODO(mr): Add some sort of basic tests or just rely on whatever has already been set up?
 #[cfg(test)]

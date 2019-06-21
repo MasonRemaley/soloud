@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["Mason Remaley <MasonRemaley@users.noreply.github.com>"]
 edition = "2018"
 
+[dependencies]
+libc = "0.2.58"
+
 [build-dependencies]
 cc = "1.0.37"
 glob = "0.3.0"
