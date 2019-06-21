@@ -30,7 +30,6 @@ docsrc/kindlegen_output.txt
 *.idb
 *.pdb
 docsrc/20*
-glue/*
 scripts/soloud_codegen.py
 glue/rpgmaker_soloud.rb
 *.lastcodeanalysissucceeded
