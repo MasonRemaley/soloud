@@ -1,5 +1,5 @@
 use soloud;
 
 fn main() {
-    println!("Hello, world!");
+    soloud::run_demo();
 }
