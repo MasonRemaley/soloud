@@ -98,6 +98,7 @@ extern "C" {
         aChannels: c_uint,   /* = 2 */
     ) -> c_int;
     pub fn Soloud_deinit(soloud: *mut Soloud);
+    pub fn Soloud_getErrorString(soloud: *mut Soloud, error_code: c_int) -> *const c_char;
     // XXX: Maybe make a typedef or such to make clear it's a handle
     pub fn Soloud_play(soloud: *mut Soloud, sound: *mut AudioSource) -> c_uint;
     #[must_use]

@@ -1,25 +1,43 @@
 use libc::rand;
 use soloud::*;
 use std::f32::consts::PI;
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
+use libc::c_int;
+
+fn unwrap(soloud: *mut Soloud, result: c_int) {
+    unsafe {
+        if result != 0 {
+            let message = Soloud_getErrorString(soloud, result);
+            panic!("Error {}: {}", result, CStr::from_ptr(message).to_str().unwrap());
+            // TODO(mr): Free the message?
+        }
+    }
+}
 
 pub fn main() {
     unsafe {
+        // Init the backend, if necessary
+        #[cfg(any(feature = "sdl1_dynamic", feature = "sdl2_dynamic"))]
+        unsafe {
+            use libc::{c_int, uint32_t};
+            extern "C" {
+                fn SDL_Init(flags: uint32_t) -> c_int;
+            }
+            assert_eq!(SDL_Init(0x00000010), 0); // TODO(mr): Correct flags?
+        }
+
         let soloud = Soloud_create();
         // TODO(mr): Return option instead? same for others that return pointers
         assert!(!soloud.is_null());
 
-        assert_eq!(
-            Soloud_initEx(
-                soloud,
-                SOLOUD_CLIP_ROUNDOFF | SOLOUD_ENABLE_VISUALIZATION,
-                SOLOUD_AUTO,
-                SOLOUD_AUTO,
-                SOLOUD_AUTO,
-                SOLOUD_AUTO
-            ),
-            0
-        );
+        unwrap(soloud, Soloud_initEx(
+            soloud,
+            SOLOUD_CLIP_ROUNDOFF | SOLOUD_ENABLE_VISUALIZATION,
+            SOLOUD_AUTO,
+            SOLOUD_AUTO,
+            SOLOUD_AUTO,
+            SOLOUD_AUTO
+        ));
 
         speech_test(soloud);
         queue_test(soloud);

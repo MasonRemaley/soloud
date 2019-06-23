@@ -10,3 +10,27 @@ libc = "0.2.58"
 [build-dependencies]
 cc = "1.0.37"
 glob = "0.3.0"
+
+[features]
+# TODO(mr): Add all or at least more of these. I temporarily installed the following packages on my machine
+# to be able to test them:
+# sdl
+coreaudio = []
+null = [] # TODO(mr): Fails at runtime
+# sdl_dynamic = []
+sdl1_dynamic = []
+sdl2_dynamic = []
+# sdl2_dynamic
+# sdl_static
+# sdl1_static
+# sdl2_static
+# portaudio
+# openal
+# xaudio
+# winmm
+# wasapi (experimental
+# oss
+# alsa
+# opensles
+# vita_homebrew
+# null
