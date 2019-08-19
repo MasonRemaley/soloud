@@ -91,5 +91,5 @@ fn compile_backend(build: &mut cc::Build) {
 
 #[cfg(not(any(feature = "sdl2_dynamic", feature = "sdl1_dynamic", feature = "null", feature = "coreaudio")))]
 fn compile_backend(_: &mut cc::Build) {
-    compile_error!("no backend set, use feature flags (e.g. --features coreaudio)");
+    compile_error!("no backend set, use feature flags (e.g. `--features coreaudio`, or `features soloud-rust-sys/coreaudio` if using the wrapper crate)");
 }

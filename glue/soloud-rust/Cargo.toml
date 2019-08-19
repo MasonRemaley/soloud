@@ -1,0 +1,9 @@
+[package]
+name = "soloud-rust" # TODO(mr): Naming?
+version = "0.1.0"
+authors = ["Mason Remaley <MasonRemaley@users.noreply.github.com>"]
+edition = "2018"
+
+[dependencies]
+libc = "0.2.58"
+soloud-rust-sys = { "path" = "../soloud-rust-sys" }

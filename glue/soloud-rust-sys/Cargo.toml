@@ -1,5 +1,5 @@
 [package]
-name = "soloud"
+name = "soloud-rust-sys"
 version = "0.1.0"
 authors = ["Mason Remaley <MasonRemaley@users.noreply.github.com>"]
 edition = "2018"

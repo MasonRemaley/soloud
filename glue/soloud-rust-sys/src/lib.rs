@@ -113,6 +113,7 @@ extern "C" {
     pub fn Queue_destroy(queue: *mut Queue);
     #[must_use]
     pub fn Queue_create() -> *mut Queue;
+    // TODO(mr): must use?
     pub fn Queue_play(queue: *mut Queue, sound: *mut AudioSource) -> c_int;
     pub fn Queue_getQueueCount(queue: *mut Queue) -> c_uint;
 }
