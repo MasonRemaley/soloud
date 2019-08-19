@@ -88,3 +88,8 @@ fn compile_backend(build: &mut cc::Build) {
 
     println!("cargo:rustc-link-lib=dylib=sdl2");
 }
+
+#[cfg(not(any(feature = "sdl2_dynamic", feature = "sdl1_dynamic", feature = "null", feature = "coreaudio")))]
+fn compile_backend(_: &mut cc::Build) {
+    compile_error!("no backend set, use feature flags (e.g. --features coreaudio)");
+}
