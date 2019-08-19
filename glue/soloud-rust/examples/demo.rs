@@ -1,8 +1,7 @@
 use libc::rand;
 use soloud_rust_sys::*; // TODO(mr): reexport any needed constants
 use std::f32::consts::PI;
-use std::ffi::{CStr, CString};
-use libc::c_int;
+use std::ffi::CStr;
 use soloud_rust::{SoLoudBuilder, SoLoud, Speech, Queue, Wav};
 
 // TODO: capitalization/spacing on soloud? in crate/api?
@@ -22,7 +21,7 @@ pub fn main() {
         .init();
 
     speech_test(&mut soloud);
-    // queue_test(soloud);
+    queue_test(&mut soloud);
 }
 
 fn speech_test(soloud: &mut SoLoud) {
@@ -39,64 +38,60 @@ fn speech_test(soloud: &mut SoLoud) {
 }
 
 fn queue_test(soloud: &mut SoLoud) {
-    unsafe {
-        let mut queue = Queue::new();
-        let mut wav = Vec::with_capacity(4);
-        for _ in 0..wav.capacity() {
-            wav.push(Wav::new());
-        }
-        let mut buf = vec![0.0; 2048];
-
-        soloud.play(&queue);
-
-        // TODO(mr): Okay creating and initializing together? Should we use lifetimes to prevent
-        // dropping while playing somehow/can we? Or is that safe?
-        let mut count = 0;
-        for i in 0..4 {
-            generate_sample(&mut buf, &mut count);
-            wav[i].load_raw_wave_ex(&buf, 44100.0, 1);
-            assert_eq!(queue.play(&wav[i]), 0);
-        }
-
-        println!("Playing queue / wav generation test..");
-
-        let mut spin = 0;
-        let mut cycle = 0;
-        while count < 44100 * 10 && soloud.get_voice_count() > 0 {
-            if queue.get_queue_count() < 3 {
-                generate_sample(&mut buf, &mut count);
-                wav[cycle].load_raw_wave_ex(&buf, 44100.0, 1);
-                assert_eq!(queue.play(&wav[cycle]), 0);
-                cycle = (cycle + 1) % 4;
-            }
-            visualize_volume(soloud, &mut spin);
-        }
-
-        while soloud.get_voice_count() > 0 {
-            visualize_volume(soloud, &mut spin);
-        }
-
-        println!("\nFinished.");
+    let mut queue = Queue::new();
+    let mut wav = Vec::with_capacity(4);
+    for _ in 0..wav.capacity() {
+        wav.push(Wav::new());
     }
+    let mut buf = vec![0.0; 2048];
+
+    soloud.play(&queue);
+
+    // TODO(mr): Okay creating and initializing together? Should we use lifetimes to prevent
+    // dropping while playing somehow/can we? Or is that safe?
+    let mut count = 0;
+    for i in 0..4 {
+        generate_sample(&mut buf, &mut count);
+        wav[i].load_raw_wave_ex(&buf, 44100.0, 1);
+        assert_eq!(queue.play(&wav[i]), 0);
+    }
+
+    println!("Playing queue / wav generation test..");
+
+    let mut spin = 0;
+    let mut cycle = 0;
+    while count < 44100 * 10 && soloud.get_voice_count() > 0 {
+        if queue.get_queue_count() < 3 {
+            generate_sample(&mut buf, &mut count);
+            wav[cycle].load_raw_wave_ex(&buf, 44100.0, 1);
+            assert_eq!(queue.play(&wav[cycle]), 0);
+            cycle = (cycle + 1) % 4;
+        }
+        visualize_volume(soloud, &mut spin);
+    }
+
+    while soloud.get_voice_count() > 0 {
+        visualize_volume(soloud, &mut spin);
+    }
+
+    println!("\nFinished.");
 }
 
 // TODO(mr): Clean up the spin thing
 fn visualize_volume(soloud: &mut SoLoud, spin: &mut i32) {
-    unsafe {
-        let v = soloud.get_approximate_volume(0);
-        print!("\r{} ", ['|', '\\', '-', '/'][(*spin & 3) as usize]);
-        *spin += 1;
-        let mut p = (v * 60.0) as i32;
-        if p > 59 {
-            p = 59;
-        }
-        // TODO(mr): Isn't there a format specifier for this?
-        for _ in 0..p {
-            print!("=");
-        }
-        for _ in p..60 {
-            print!(" ");
-        }
+    let v = soloud.get_approximate_volume(0);
+    print!("\r{} ", ['|', '\\', '-', '/'][(*spin & 3) as usize]);
+    *spin += 1;
+    let mut p = (v * 60.0) as i32;
+    if p > 59 {
+        p = 59;
+    }
+    // TODO(mr): Isn't there a format specifier for this?
+    for _ in 0..p {
+        print!("=");
+    }
+    for _ in p..60 {
+        print!(" ");
     }
 }
 
