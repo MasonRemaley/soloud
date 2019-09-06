@@ -1,23 +1,11 @@
-use libc::rand;
-use soloud_rust_sys::*; // TODO(mr): reexport any needed constants
 use std::f32::consts::PI;
 use std::ffi::CStr;
-use soloud_rust::{SoLoudBuilder, SoLoud, Speech, Queue, Wav};
+use soloud_rust::{Builder, BuilderFlags, SoLoud, Speech, Queue, Wav};
+use libc::rand;
 
-// TODO: capitalization/spacing on soloud? in crate/api?
 pub fn main() {
-    // Init the backend, if necessary
-    #[cfg(any(feature = "sdl1_dynamic", feature = "sdl2_dynamic"))]
-    unsafe {
-        use libc::{c_int, uint32_t};
-        extern "C" {
-            fn SDL_Init(flags: uint32_t) -> c_int;
-        }
-        assert_eq!(SDL_Init(0x00000010), 0); // TODO(mr): Correct flags?
-    }
-
-    let mut soloud = SoLoudBuilder::new()
-        .flags(SOLOUD_CLIP_ROUNDOFF | SOLOUD_ENABLE_VISUALIZATION,)
+    let mut soloud = Builder::new()
+        .flags(BuilderFlags::CLIP_ROUNDOFF | BuilderFlags::ENABLE_VISUALIZATION)
         .init();
 
     speech_test(&mut soloud);
@@ -47,8 +35,6 @@ fn queue_test(soloud: &mut SoLoud) {
 
     soloud.play(&queue);
 
-    // TODO(mr): Okay creating and initializing together? Should we use lifetimes to prevent
-    // dropping while playing somehow/can we? Or is that safe?
     let mut count = 0;
     for i in 0..4 {
         generate_sample(&mut buf, &mut count);
@@ -77,7 +63,6 @@ fn queue_test(soloud: &mut SoLoud) {
     println!("\nFinished.");
 }
 
-// TODO(mr): Clean up the spin thing
 fn visualize_volume(soloud: &mut SoLoud, spin: &mut i32) {
     let v = soloud.get_approximate_volume(0);
     print!("\r{} ", ['|', '\\', '-', '/'][(*spin & 3) as usize]);
@@ -86,7 +71,6 @@ fn visualize_volume(soloud: &mut SoLoud, spin: &mut i32) {
     if p > 59 {
         p = 59;
     }
-    // TODO(mr): Isn't there a format specifier for this?
     for _ in 0..p {
         print!("=");
     }
@@ -95,16 +79,13 @@ fn visualize_volume(soloud: &mut SoLoud, spin: &mut i32) {
     }
 }
 
-// TODO(mr): Build the c example, make sure it sounds the same
-// TODO(mr): Clean up loop
-// TODO(mr): Don't use libc for rand
 fn generate_sample(buf: &mut [f32], count: &mut i32) {
     let mut i = 0;
     let mut base = *count;
     while i < 2048 {
         buf[i] = (220.0 * PI * 2.0 * base as f32 * (1.0 / 44100.0)).sin()
             - (230.0 * PI * 2.0 * (base as f32) * (1.0 / 44100.0)).sin();
-        buf[i] += (((unsafe { rand() } % 1024) - 512) as f32 / 512.0)
+        buf[i] += (((unsafe { libc::rand() } % 1024) - 512) as f32 / 512.0)
             * (60.0 * PI * 2.0 * (base as f32) * (1.0 / 44100.0)).sin()
             * (1.0 * PI * 2.0 * (base as f32) * (1.0 / 44100.0)).sin();
         let fade = (44100.0 * 10.0 - (base as f32)) / (44100.0 * 10.0);

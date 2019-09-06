@@ -1,43 +1,73 @@
-// TODO(mr): Document, or disable warnings and point to online docs
-
 use soloud_rust_sys as sys;
 use std::ffi::CStr;
 use std::ptr::NonNull;
 use libc::{c_int, c_uint, c_float};
 use std::convert::TryInto;
 
-// TODO(mr): These are always fatal right?
+#[macro_use]
+extern crate bitflags;
+
+bitflags! {
+    pub struct BuilderFlags: c_uint {
+        const CLIP_ROUNDOFF = sys::SOLOUD_CLIP_ROUNDOFF;
+        const ENABLE_VISUALIZATION = sys::SOLOUD_ENABLE_VISUALIZATION;
+        const LEFT_HANDED_3D = sys::SOLOUD_LEFT_HANDED_3D;
+    }
+}
+
+// NOTE: I'm disabling the dead code warning for this enum. It's never exposed to users (see the
+// NOTE on the builder's backend field), but I left this code here so you can see how to make a Rust
+// enum that lines up w/ your constants.
+#[allow(dead_code)]
+#[derive(Clone, Copy, Debug)]
+enum Backend {
+    Auto = sys::SOLOUD_AUTO as isize,
+    Sdl1 = sys::SOLOUD_SDL1 as isize,
+    Sdl2 = sys::SOLOUD_SDL2 as isize,
+    Portaudio = sys::SOLOUD_PORTAUDIO as isize,
+    Winmm = sys::SOLOUD_WINMM as isize,
+    Xaudio2 = sys::SOLOUD_XAUDIO2 as isize,
+    Wasapi = sys::SOLOUD_WASAPI as isize,
+    Alsa = sys::SOLOUD_ALSA as isize,
+    Oss = sys::SOLOUD_OSS as isize,
+    Openal = sys::SOLOUD_OPENAL as isize,
+    Coreaudio = sys::SOLOUD_COREAUDIO as isize,
+    Opensles = sys::SOLOUD_OPENSLES as isize,
+    VitaHomebrew = sys::SOLOUD_VITA_HOMEBREW as isize,
+    Nulldriver = sys::SOLOUD_NULLDRIVER as isize,
+}
+
 fn unwrap(soloud: &mut SoLoud, result: c_int) {
     unsafe {
         if result != 0 {
             let message = sys::Soloud_getErrorString(soloud.0.as_ptr(), result);
             panic!("Error {}: {}", result, CStr::from_ptr(message).to_str().unwrap());
-            // TODO(mr): Free the message?
         }
     }
 }
 
-pub struct SoLoudBuilder {
-    flags: c_uint,
-    backend: c_uint, // TODO: Expose this option?
+pub struct Builder {
+    flags: BuilderFlags,
+    // NOTE: I'm not exposing this option right now, since you need to decide which backends you
+    // want available while building. If you'd like to allow having multiple available at once lmk.
+    backend: Backend,
     sample_rate: c_uint,
     buffer_size: c_uint,
     channels: c_uint,
 }
 
-impl SoLoudBuilder {
+impl Builder {
     pub fn new() -> Self {
         Self {
-            flags: sys::SOLOUD_CLIP_ROUNDOFF,
-            backend: sys::SOLOUD_AUTO,
+            flags: BuilderFlags::CLIP_ROUNDOFF,
+            backend: Backend::Auto,
             sample_rate: sys::SOLOUD_AUTO,
             buffer_size: sys::SOLOUD_AUTO,
             channels: 2,
         }
     }
 
-    // TODO(mr): Make type safe?
-    pub fn flags(&mut self, flags: c_uint) -> &mut Self {
+    pub fn flags(&mut self, flags: BuilderFlags) -> &mut Self {
         self.flags = flags;
         self
     }
@@ -62,8 +92,8 @@ impl SoLoudBuilder {
             let mut soloud = SoLoud(NonNull::new(sys::Soloud_create()).unwrap());
             let result = sys::Soloud_initEx(
                 soloud.0.as_ptr(),
-                self.flags,
-                self.backend,
+                self.flags.bits(),
+                self.backend as c_uint,
                 self.sample_rate,
                 self.buffer_size,
                 self.channels,
@@ -83,24 +113,26 @@ impl SoLoud {
         }
     }
 
-    // TODO(mr): Immutable correct? (same for other play method)
-    pub fn play(&mut self, audio_source: &AudioSource) -> c_uint {
+    // NOTE: The Rust API is treating the audio source as immutable in all play methods, even though
+    // the C code isn't, as I think that's accurately describing the semantics.
+    pub fn play(&mut self, audio_source: &dyn AudioSource) -> c_uint {
         unsafe {
             sys::Soloud_play(self.0.as_ptr(), audio_source.raw())
         }
     }
 
-    // TODO(mr): Is there a max voice count? if so, switch to an explicitly sized type here. Sort out
-    // the floats in the API as well.
-    // TODO(mr): naming "get_" or no?
-    pub fn get_voice_count(&self) -> c_uint {
+    // NOTE: If there's a max possible voice count, it would be friendlier to other Rust code to
+    // replace `c_uint` here with an explicitly sized type (e.g. `u8`).
+    pub fn voice_count(&self) -> c_uint {
         unsafe {
             sys::Soloud_getVoiceCount(self.0.as_ptr())
         }
     }
 
-    // TODO(mr): What happens if passing in a channel that doesn't exist?
-    pub fn get_approximate_volume(&self, channel: c_uint) -> c_float {
+    // NOTE: If you expect floats to always be 32 bit, it would be friendlier to other Rust code to
+    // replace all public mentions of `c_float` in the `soloud-rust` crate with `f32`.
+    // NOTE: I'm not sure what happens if you pass in a channel that doesn't exist here
+    pub fn approximate_volume(&self, channel: c_uint) -> c_float {
         unsafe {
             sys::Soloud_getApproximateVolume(self.0.as_ptr(), channel)
         }
@@ -119,7 +151,8 @@ impl Drop for SoLoud {
 pub struct Speech(NonNull<sys::Speech>);
 
 impl Speech {
-    // TODO(mr): It's not unsafe to have it uninitialized right?
+    // NOTE: This API is assuming that creating a sound and not initializing it does something
+    // predictable, like have it be empty. Same for `Queue`, etc.
     pub fn new() -> Self {
         unsafe {
             Self(NonNull::new(sys::Speech_create()).unwrap())
@@ -144,22 +177,22 @@ impl Drop for Speech {
 pub struct Queue(NonNull<sys::Queue>);
 
 impl Queue {
-    // TODO(mr): It's not unsafe to have it uninitialized right?
     pub fn new() -> Self {
         unsafe {
             Self(NonNull::new(sys::Queue_create()).unwrap())
         }
     }
 
-    // TODO(mr): int vs uint for other play..?
-    pub fn play(&mut self, audio_source: &AudioSource) -> c_int {
+    // NOTE: I noticed that `Queue_play` returns an int, and `Soloud_play` returns a signed one. Is
+    // this intentional? I'd also switch all of these to fixed size integer types in the Rust API if
+    // possible.
+    pub fn play(&mut self, audio_source: &dyn AudioSource) -> c_int {
         unsafe {
             sys::Queue_play(self.0.as_ptr(), audio_source.raw())
         }
     }
 
-    // TODO(mr): Naming...
-    pub fn get_queue_count(&mut self) -> c_uint {
+    pub fn queue_count(&mut self) -> c_uint {
         unsafe {
             sys::Queue_getQueueCount(self.0.as_ptr())
         }
@@ -177,7 +210,6 @@ impl Drop for Queue {
 pub struct Wav(NonNull<sys::Wav>);
 
 impl Wav {
-    // TODO(mr): safe before initialized?
     pub fn new() -> Self {
         unsafe {
             Wav(NonNull::new(sys::Wav_create()).unwrap())
@@ -189,7 +221,6 @@ impl Wav {
     // working. Also naming/such?.
     pub fn load_raw_wave_ex(&mut self, buffer: &[c_float], sample_rate: c_float, channels: c_uint) {
         unsafe {
-            // TODO(mr): cast to mutable okay?
             assert_eq!(sys::Wav_loadRawWaveEx(self.0.as_ptr(), buffer.as_ptr() as *mut c_float, buffer.len().try_into().unwrap(), sample_rate, channels, 1, 0), 0);
         }
     }
@@ -239,7 +270,9 @@ impl private::AudioSourceSealed for Wav {
     }
 }
 
-// TODO(mr): ...
+// NOTE: If you want to set up tests for the Rust API, they'd go here (or alternatively in a file
+// called tests). I'm happy to help with this if it's something you want and you know what the tests
+// should be.
 #[cfg(test)]
 mod tests {
     #[test]
