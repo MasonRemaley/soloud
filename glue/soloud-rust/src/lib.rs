@@ -1,12 +1,12 @@
 #[macro_use]
 extern crate bitflags;
 
+use libc::{c_float, c_int, c_uint};
 use soloud_rust_sys as sys;
-use std::ffi::CStr;
-use std::ptr::NonNull;
-use libc::{c_int, c_uint, c_float};
 use std::convert::TryInto;
+use std::ffi::CStr;
 use std::ffi::CString;
+use std::ptr::NonNull;
 
 bitflags! {
     pub struct BuilderFlags: c_uint {
@@ -42,7 +42,11 @@ fn unwrap(soloud: &mut SoLoud, result: c_int) {
     unsafe {
         if result != 0 {
             let message = sys::Soloud_getErrorString(soloud.0.as_ptr(), result);
-            panic!("Error {}: {}", result, CStr::from_ptr(message).to_str().unwrap());
+            panic!(
+                "Error {}: {}",
+                result,
+                CStr::from_ptr(message).to_str().unwrap()
+            );
         }
     }
 }
@@ -117,26 +121,20 @@ impl SoLoud {
     // NOTE: The Rust API is treating the audio source as immutable in all play methods, even though
     // the C code isn't, as I think that's accurately describing the semantics.
     pub fn play(&mut self, audio_source: &dyn AudioSource) -> c_uint {
-        unsafe {
-            sys::Soloud_play(self.0.as_ptr(), audio_source.raw())
-        }
+        unsafe { sys::Soloud_play(self.0.as_ptr(), audio_source.raw()) }
     }
 
     // NOTE: If there's a max possible voice count, it would be friendlier to other Rust code to
     // replace `c_uint` here with an explicitly sized type (e.g. `u8`).
     pub fn voice_count(&self) -> c_uint {
-        unsafe {
-            sys::Soloud_getVoiceCount(self.0.as_ptr())
-        }
+        unsafe { sys::Soloud_getVoiceCount(self.0.as_ptr()) }
     }
 
     // NOTE: If you expect floats to always be 32 bit, it would be friendlier to other Rust code to
     // replace all public mentions of `c_float` in the `soloud-rust` crate with `f32`.
     // NOTE: I'm not sure what happens if you pass in a channel that doesn't exist here
     pub fn approximate_volume(&self, channel: c_uint) -> c_float {
-        unsafe {
-            sys::Soloud_getApproximateVolume(self.0.as_ptr(), channel)
-        }
+        unsafe { sys::Soloud_getApproximateVolume(self.0.as_ptr(), channel) }
     }
 }
 
@@ -155,9 +153,7 @@ impl Speech {
     // NOTE: This API is assuming that creating a sound and not initializing it does something
     // predictable, like have it be empty. Same for `Queue`, etc.
     pub fn new() -> Self {
-        unsafe {
-            Self(NonNull::new(sys::Speech_create()).unwrap())
-        }
+        unsafe { Self(NonNull::new(sys::Speech_create()).unwrap()) }
     }
 
     pub fn set_text(&mut self, text: &str) -> Result<(), std::ffi::NulError> {
@@ -185,24 +181,18 @@ pub struct Queue(NonNull<sys::Queue>);
 
 impl Queue {
     pub fn new() -> Self {
-        unsafe {
-            Self(NonNull::new(sys::Queue_create()).unwrap())
-        }
+        unsafe { Self(NonNull::new(sys::Queue_create()).unwrap()) }
     }
 
     // NOTE: I noticed that `Queue_play` returns an int, and `Soloud_play` returns a signed one. Is
     // this intentional? I'd also switch all of these to fixed size integer types in the Rust API if
     // possible.
     pub fn play(&mut self, audio_source: &dyn AudioSource) -> c_int {
-        unsafe {
-            sys::Queue_play(self.0.as_ptr(), audio_source.raw())
-        }
+        unsafe { sys::Queue_play(self.0.as_ptr(), audio_source.raw()) }
     }
 
     pub fn queue_count(&mut self) -> c_uint {
-        unsafe {
-            sys::Queue_getQueueCount(self.0.as_ptr())
-        }
+        unsafe { sys::Queue_getQueueCount(self.0.as_ptr()) }
     }
 }
 
@@ -218,9 +208,7 @@ pub struct Wav(NonNull<sys::Wav>);
 
 impl Wav {
     pub fn new() -> Self {
-        unsafe {
-            Wav(NonNull::new(sys::Wav_create()).unwrap())
-        }
+        unsafe { Wav(NonNull::new(sys::Wav_create()).unwrap()) }
     }
 
     // NOTE: If you want to support passing ownership of the memory to SoLoud, I'd have to think
@@ -228,11 +216,20 @@ impl Wav {
     // was allocated in Rust, but there may be a way to do it.)
     pub fn load_raw_wave(&mut self, buffer: &[c_float], sample_rate: c_float, channels: c_uint) {
         unsafe {
-            assert_eq!(sys::Wav_loadRawWaveEx(self.0.as_ptr(), buffer.as_ptr() as *mut c_float, buffer.len().try_into().unwrap(), sample_rate, channels, 1, 0), 0);
+            assert_eq!(
+                sys::Wav_loadRawWaveEx(
+                    self.0.as_ptr(),
+                    buffer.as_ptr() as *mut c_float,
+                    buffer.len().try_into().unwrap(),
+                    sample_rate,
+                    channels,
+                    1,
+                    0
+                ),
+                0
+            );
         }
     }
-
-
 }
 
 impl Drop for Wav {
@@ -242,8 +239,6 @@ impl Drop for Wav {
         }
     }
 }
-
-
 
 /// Private to prevent access to implementation details, and to prevent new implementations of the
 /// traits enclosed.

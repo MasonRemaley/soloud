@@ -1,5 +1,5 @@
+use soloud_rust::{Builder, BuilderFlags, Queue, SoLoud, Speech, Wav};
 use std::f32::consts::PI;
-use soloud_rust::{Builder, BuilderFlags, SoLoud, Speech, Queue, Wav};
 
 pub fn main() {
     let mut soloud = Builder::new()
