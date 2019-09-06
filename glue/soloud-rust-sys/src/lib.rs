@@ -1,7 +1,6 @@
 use libc::{c_char, c_float, c_int, c_uint};
 
-// TODO(mr): Or can we get these as statics?
-// Collected enumerations
+// Constants
 pub const SOLOUD_AUTO: c_uint = 0;
 pub const SOLOUD_SDL1: c_uint = 1;
 pub const SOLOUD_SDL2: c_uint = 2;
@@ -63,8 +62,6 @@ pub const VIC_SOPRANO: c_uint = 2;
 pub const VIC_NOISE: c_uint = 3;
 pub const VIC_MAX_REGS: c_uint = 4;
 
-// TODO(mr): Note to self to file an issue on my own repos to stop using empty enums for this since
-// it's no longer recommended
 // Object handle types
 #[macro_export]
 macro_rules! opaque_struct {
@@ -87,19 +84,17 @@ extern "C" {
     pub fn Soloud_destroy(soloud: *mut Soloud);
     #[must_use]
     pub fn Soloud_create() -> *mut Soloud;
-    // TODO(mr): must use because I assume the result is an error code
     #[must_use]
     pub fn Soloud_initEx(
         soloud: *mut Soloud,
-        aFlags: c_uint,      /* = Soloud::CLIP_ROUNDOFF */
-        aBackend: c_uint,    /* = Soloud::AUTO */
-        aSamplerate: c_uint, /* = Soloud::AUTO */
-        aBufferSize: c_uint, /* = Soloud::AUTO */
-        aChannels: c_uint,   /* = 2 */
+        aFlags: c_uint,
+        aBackend: c_uint,
+        aSamplerate: c_uint,
+        aBufferSize: c_uint,
+        aChannels: c_uint,
     ) -> c_int;
     pub fn Soloud_deinit(soloud: *mut Soloud);
     pub fn Soloud_getErrorString(soloud: *mut Soloud, error_code: c_int) -> *const c_char;
-    // XXX: Maybe make a typedef or such to make clear it's a handle
     pub fn Soloud_play(soloud: *mut Soloud, sound: *mut AudioSource) -> c_uint;
     #[must_use]
     pub fn Soloud_getVoiceCount(soloud: *mut Soloud) -> c_uint;
@@ -113,7 +108,8 @@ extern "C" {
     pub fn Queue_destroy(queue: *mut Queue);
     #[must_use]
     pub fn Queue_create() -> *mut Queue;
-    // TODO(mr): must use?
+    // NOTE: I'm unsure whether this return value is an error or has some other meaning, if it's an
+    // error code then we should mark it as `#[must_use]` and then check it in `soloud-rust`.
     pub fn Queue_play(queue: *mut Queue, sound: *mut AudioSource) -> c_int;
     pub fn Queue_getQueueCount(queue: *mut Queue) -> c_uint;
 }
@@ -144,7 +140,6 @@ extern "C" {
     ) -> c_int;
 }
 
-// TODO(mr): Add some sort of basic tests or just rely on whatever has already been set up?
 #[cfg(test)]
 mod tests {
     #[test]

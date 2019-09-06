@@ -1,9 +1,6 @@
 use cc;
-use glob::glob; // TODO(mr): Don't need glob if we just need core?
+use glob::glob;
 
-// TODO(mr): Could also provide option to link to system version but I don't think that's
-// particularly useful in Rust.
-// TODO(mr): Consider separating compilation of the library from the C API
 fn main() {
     let mut build = cc::Build::new();
 
@@ -20,8 +17,8 @@ fn main() {
 
     compile_backend(&mut build);
 
-    // TODO(mr): Alternatively, fix/disable these warnings in the source, or disable all warnings
-    // here--this currently may be ignored by some compilers. Same deal when compiling the C API.
+    // NOTE: I'm disabling warnings here that I get from the soloud code, but the same syntax might
+    // not be used for disabling warnings on all compilers.
     build.flag_if_supported("-Wno-unused-parameter");
     build.flag_if_supported("-Wno-delete-non-virtual-dtor");
     build.flag_if_supported("-Wno-missing-field-initializers");
@@ -55,7 +52,6 @@ fn compile_backend(build: &mut cc::Build) {
     }
 }
 
-// TODO(mr): Init fails
 #[cfg(feature = "sdl1_dynamic")]
 fn compile_backend(build: &mut cc::Build) {
     build.define("WITH_SDL1", Some(""));
@@ -64,7 +60,7 @@ fn compile_backend(build: &mut cc::Build) {
 
     cc::Build::new()
         .cpp(false)
-        .define("WITH_SDL", "") // TODO(mr): vs sdl1..?
+        .define("WITH_SDL", "") // NOTE: vs sdl1..?
         .file("../../src/backend/sdl/soloud_sdl1_dll.c")
         .compile("soloud_sdl1_dll");
 
@@ -72,7 +68,6 @@ fn compile_backend(build: &mut cc::Build) {
     println!("cargo:rustc-link-lib=dylib=sdl");
 }
 
-// TODO(mr): Init fails
 #[cfg(feature = "sdl2_dynamic")]
 fn compile_backend(build: &mut cc::Build) {
     build.define("WITH_SDL2", Some(""));
