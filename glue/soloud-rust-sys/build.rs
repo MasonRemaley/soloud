@@ -30,8 +30,6 @@ fn main() {
     build.compile("soloud");
 }
 
-// TODO(mr): Add readme explaining how to choose a backend. Also provide a default impl of compile
-// backend that explains that you need to set one if you don't.
 #[cfg(feature = "coreaudio")]
 fn compile_backend(build: &mut cc::Build) {
     build.define("WITH_COREAUDIO", Some(""));

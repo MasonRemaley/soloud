@@ -1,11 +1,12 @@
+#[macro_use]
+extern crate bitflags;
+
 use soloud_rust_sys as sys;
 use std::ffi::CStr;
 use std::ptr::NonNull;
 use libc::{c_int, c_uint, c_float};
 use std::convert::TryInto;
-
-#[macro_use]
-extern crate bitflags;
+use std::ffi::CString;
 
 bitflags! {
     pub struct BuilderFlags: c_uint {
@@ -159,7 +160,13 @@ impl Speech {
         }
     }
 
-    pub fn set_text(&mut self, text: &CStr) {
+    pub fn set_text(&mut self, text: &str) -> Result<(), std::ffi::NulError> {
+        let cstring = CString::new(text)?;
+        self.set_text_cstr(&cstring);
+        Ok(())
+    }
+
+    pub fn set_text_cstr(&mut self, text: &CStr) {
         unsafe {
             assert_eq!(sys::Speech_setText(self.0.as_ptr(), text.as_ptr()), 0);
         }
@@ -216,14 +223,16 @@ impl Wav {
         }
     }
 
-    // TODO(mr): copy/take ownership? should be possible to allow variants with and without those
-    // safely, just gotta make sure we correctly understand them first so lets first get the basics
-    // working. Also naming/such?.
-    pub fn load_raw_wave_ex(&mut self, buffer: &[c_float], sample_rate: c_float, channels: c_uint) {
+    // NOTE: If you want to support passing ownership of the memory to SoLoud, I'd have to think
+    // that through a little more (it's not obviously correct to just let C deallocate memory that
+    // was allocated in Rust, but there may be a way to do it.)
+    pub fn load_raw_wave(&mut self, buffer: &[c_float], sample_rate: c_float, channels: c_uint) {
         unsafe {
             assert_eq!(sys::Wav_loadRawWaveEx(self.0.as_ptr(), buffer.as_ptr() as *mut c_float, buffer.len().try_into().unwrap(), sample_rate, channels, 1, 0), 0);
         }
     }
+
+
 }
 
 impl Drop for Wav {
@@ -236,8 +245,8 @@ impl Drop for Wav {
 
 
 
-// TODO: Organize better...
-/// Private to prevent access to implementation details, and new implementations of the traits.
+/// Private to prevent access to implementation details, and to prevent new implementations of the
+/// traits enclosed.
 mod private {
     use super::*;
     pub trait AudioSourceSealed {
@@ -245,9 +254,7 @@ mod private {
     }
 }
 
-pub trait AudioSource: private::AudioSourceSealed {
-    // TODO(mr): Implement some of the public methods here...
-}
+pub trait AudioSource: private::AudioSourceSealed {}
 
 impl AudioSource for Speech {}
 impl private::AudioSourceSealed for Speech {

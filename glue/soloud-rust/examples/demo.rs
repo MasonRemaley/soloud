@@ -1,5 +1,4 @@
 use std::f32::consts::PI;
-use std::ffi::CStr;
 use soloud_rust::{Builder, BuilderFlags, SoLoud, Speech, Queue, Wav};
 
 pub fn main() {
@@ -13,7 +12,7 @@ pub fn main() {
 
 fn speech_test(soloud: &mut SoLoud) {
     let mut speech = Speech::new();
-    speech.set_text(CStr::from_bytes_with_nul(b"1 2 3       A B C        Doooooo    Reeeeee    Miiiiii    Faaaaaa    Soooooo    Laaaaaa    Tiiiiii    Doooooo!\0").unwrap());
+    speech.set_text("1 2 3       A B C        Doooooo    Reeeeee    Miiiiii    Faaaaaa    Soooooo    Laaaaaa    Tiiiiii    Doooooo!").unwrap();
     soloud.play(&speech);
 
     println!("Playing speech test..");
@@ -37,7 +36,7 @@ fn queue_test(soloud: &mut SoLoud) {
     let mut count = 0;
     for i in 0..4 {
         generate_sample(&mut buf, &mut count);
-        wav[i].load_raw_wave_ex(&buf, 44100.0, 1);
+        wav[i].load_raw_wave(&buf, 44100.0, 1);
         assert_eq!(queue.play(&wav[i]), 0);
     }
 
@@ -48,7 +47,7 @@ fn queue_test(soloud: &mut SoLoud) {
     while count < 44100 * 10 && soloud.voice_count() > 0 {
         if queue.queue_count() < 3 {
             generate_sample(&mut buf, &mut count);
-            wav[cycle].load_raw_wave_ex(&buf, 44100.0, 1);
+            wav[cycle].load_raw_wave(&buf, 44100.0, 1);
             assert_eq!(queue.play(&wav[cycle]), 0);
             cycle = (cycle + 1) % 4;
         }
