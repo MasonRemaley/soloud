@@ -1,7 +1,6 @@
 use std::f32::consts::PI;
 use std::ffi::CStr;
 use soloud_rust::{Builder, BuilderFlags, SoLoud, Speech, Queue, Wav};
-use libc::rand;
 
 pub fn main() {
     let mut soloud = Builder::new()
@@ -19,7 +18,7 @@ fn speech_test(soloud: &mut SoLoud) {
 
     println!("Playing speech test..");
     let mut spin = 0;
-    while soloud.get_voice_count() > 0 {
+    while soloud.voice_count() > 0 {
         visualize_volume(soloud, &mut spin);
     }
     println!("\nFinished.");
@@ -46,8 +45,8 @@ fn queue_test(soloud: &mut SoLoud) {
 
     let mut spin = 0;
     let mut cycle = 0;
-    while count < 44100 * 10 && soloud.get_voice_count() > 0 {
-        if queue.get_queue_count() < 3 {
+    while count < 44100 * 10 && soloud.voice_count() > 0 {
+        if queue.queue_count() < 3 {
             generate_sample(&mut buf, &mut count);
             wav[cycle].load_raw_wave_ex(&buf, 44100.0, 1);
             assert_eq!(queue.play(&wav[cycle]), 0);
@@ -56,7 +55,7 @@ fn queue_test(soloud: &mut SoLoud) {
         visualize_volume(soloud, &mut spin);
     }
 
-    while soloud.get_voice_count() > 0 {
+    while soloud.voice_count() > 0 {
         visualize_volume(soloud, &mut spin);
     }
 
@@ -64,7 +63,7 @@ fn queue_test(soloud: &mut SoLoud) {
 }
 
 fn visualize_volume(soloud: &mut SoLoud, spin: &mut i32) {
-    let v = soloud.get_approximate_volume(0);
+    let v = soloud.approximate_volume(0);
     print!("\r{} ", ['|', '\\', '-', '/'][(*spin & 3) as usize]);
     *spin += 1;
     let mut p = (v * 60.0) as i32;
